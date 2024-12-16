@@ -1,0 +1,58 @@
+name: (On Research) Android Publish Play Store (Still in development)
+
+env:
+  # The name of the main module repository
+  main_project_module: app
+
+  # The name of the Play Store
+  playstore_name: Frogobox ID
+
+on:
+  push:
+    branches:
+      - 'release/**'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+
+      - name: Change wrapper permissions
+        run: chmod +x ./gradlew
+
+      - name: Run Tests
+        run: ./gradlew test
+
+      - name: Build Project
+        run: ./gradlew build
+
+      - name: Build Release AAB
+        run: ./gradlew bundleRelease
+
+      - name: Sign AAB
+        uses: r0adkll/sign-android-release@v4
+        with:
+          releaseDirectory: app/build/outputs/bundle/release
+          signingKeyBase64: ${{ secrets.SIGN_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.STORE_KEY_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Deploy to Play Store
+        uses: r0adkll/upload-google-play@v4
+        with:
+          serviceAccountJsonPlainText: ${{secrets.SERVICE_ACCOUNT}}
+          packageName: com.tomerpacific.laundry
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          track: production
